@@ -9,7 +9,9 @@ import { AppList } from "@/components/AppList";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function Setup() {
   const [_, setLocation] = useLocation();
@@ -24,22 +26,34 @@ export default function Setup() {
   });
   
   const [restrictedMode, setRestrictedMode] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [hasSetPassword, setHasSetPassword] = useState(false);
   
   useEffect(() => {
     if (settings) {
-      setRestrictedMode(settings.restrictedMode);
+      setRestrictedMode(settings.restrictedMode || false);
+      setHasSetPassword(!!settings.password);
     }
   }, [settings]);
   
   const updateSettingsMutation = useMutation({
-    mutationFn: async (restrictedMode: boolean) => {
-      const response = await apiRequest('PATCH', '/api/settings', { restrictedMode });
+    mutationFn: async (data: { restrictedMode?: boolean, password?: string }) => {
+      const response = await apiRequest('PATCH', '/api/settings', data);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
-      if (restrictedMode) {
+      
+      if (variables.restrictedMode) {
         setLocation('/restricted');
+      } else if (variables.password) {
+        setHasSetPassword(true);
+        toast({
+          title: "Password Set",
+          description: "Your protection password has been set"
+        });
       }
     },
     onError: () => {
@@ -55,6 +69,31 @@ export default function Setup() {
     setRestrictedMode(checked);
   };
   
+  const savePassword = () => {
+    // Validation
+    if (!password) {
+      toast({
+        title: "Password Required",
+        description: "Please enter a password",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords Don't Match",
+        description: "Please make sure your passwords match",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateSettingsMutation.mutate({ password });
+    setPassword("");
+    setConfirmPassword("");
+  };
+  
   const applySettings = () => {
     const selectedApps = apps?.filter(app => app.selected) || [];
     if (selectedApps.length === 0) {
@@ -66,7 +105,16 @@ export default function Setup() {
       return;
     }
     
-    updateSettingsMutation.mutate(true);
+    if (!hasSetPassword) {
+      toast({
+        title: "Password Required",
+        description: "Please set a password for exit protection",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateSettingsMutation.mutate({ restrictedMode: true });
   };
   
   const isLoading = isLoadingApps || isLoadingSettings;
@@ -101,6 +149,73 @@ export default function Setup() {
             onCheckedChange={toggleRestrictedMode}
           />
         </div>
+      </Card>
+
+      <Card className="p-4 mb-6">
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-medium text-foreground">Exit Protection</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {hasSetPassword 
+              ? "Password protection is enabled" 
+              : "Set a password to protect restricted mode"}
+          </p>
+        </div>
+        
+        {!hasSetPassword ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+              />
+            </div>
+            
+            <Button 
+              onClick={savePassword} 
+              className="w-full"
+              disabled={updateSettingsMutation.isPending}
+            >
+              Set Password
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setHasSetPassword(false);
+              updateSettingsMutation.mutate({ password: "" });
+            }}
+          >
+            Change Password
+          </Button>
+        )}
       </Card>
       
       <div className="mb-6">

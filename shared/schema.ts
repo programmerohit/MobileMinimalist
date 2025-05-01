@@ -20,6 +20,7 @@ export const insertAppSchema = createInsertSchema(apps).omit({
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   restrictedMode: boolean("restricted_mode").default(false),
+  password: text("password"),
 });
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({

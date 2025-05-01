@@ -61,16 +61,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update settings
   app.patch('/api/settings', async (req, res) => {
     try {
-      const { restrictedMode } = req.body;
+      const { restrictedMode, password } = req.body;
       
-      if (typeof restrictedMode !== 'boolean') {
+      // Validate restrictedMode if provided
+      if (restrictedMode !== undefined && typeof restrictedMode !== 'boolean') {
         return res.status(400).json({ message: 'Restricted mode must be a boolean' });
       }
       
-      const updatedSettings = await storage.updateSettings({ restrictedMode });
+      // Update with provided fields
+      const updatedSettings = await storage.updateSettings({ 
+        ...(restrictedMode !== undefined && { restrictedMode }),
+        ...(password !== undefined && { password })
+      });
+      
       res.json(updatedSettings);
     } catch (error) {
       res.status(500).json({ message: 'Failed to update settings' });
+    }
+  });
+  
+  // Verify password
+  app.post('/api/verify-password', async (req, res) => {
+    try {
+      const { password } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ message: 'Password is required' });
+      }
+      
+      const settings = await storage.getSettings();
+      
+      if (!settings.password) {
+        return res.status(400).json({ message: 'No password has been set' });
+      }
+      
+      if (password === settings.password) {
+        return res.json({ success: true });
+      } else {
+        return res.status(401).json({ message: 'Incorrect password' });
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to verify password' });
     }
   });
 
