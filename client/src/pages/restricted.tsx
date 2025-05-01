@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { App, Settings } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PasswordDialog } from "@/components/PasswordDialog";
 import { Button } from "@/components/ui/button";
 import { 
   Phone, Users, MessageCircle, Clock, Camera, Image, 
@@ -16,9 +17,15 @@ export default function Restricted() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | undefined>();
   
-  const { data: selectedApps, isLoading } = useQuery<App[]>({
+  const { data: selectedApps, isLoading: isLoadingApps } = useQuery<App[]>({
     queryKey: ['/api/apps/selected'],
+  });
+  
+  const { data: settings, isLoading: isLoadingSettings } = useQuery<Settings>({ 
+    queryKey: ['/api/settings'],
   });
   
   const updateSettingsMutation = useMutation({
@@ -39,9 +46,39 @@ export default function Restricted() {
     }
   });
   
-  const exitRestrictedMode = () => {
-    updateSettingsMutation.mutate(false);
+  const verifyPasswordMutation = useMutation({
+    mutationFn: async (password: string) => {
+      const response = await apiRequest('POST', '/api/verify-password', { password });
+      return await response.json();
+    },
+    onSuccess: () => {
+      setPasswordError(undefined);
+      updateSettingsMutation.mutate(false);
+      setIsPasswordDialogOpen(false);
+    },
+    onError: (error) => {
+      setPasswordError("Incorrect password. Please try again.");
+    }
+  });
+  
+  const handleExitConfirm = () => {
     setIsExitDialogOpen(false);
+    if (settings?.password) {
+      setIsPasswordDialogOpen(true);
+      setPasswordError(undefined);
+    } else {
+      // No password set, proceed with exit
+      updateSettingsMutation.mutate(false);
+    }
+  };
+  
+  const handlePasswordSubmit = (password: string) => {
+    if (!password) {
+      setPasswordError("Password is required");
+      return;
+    }
+    
+    verifyPasswordMutation.mutate(password);
   };
   
   const getIconForApp = (iconName: string) => {
@@ -65,6 +102,8 @@ export default function Restricted() {
       description: "This is a simulation in a web environment",
     });
   };
+  
+  const isLoading = isLoadingApps || isLoadingSettings;
   
   if (isLoading) {
     return (
@@ -113,9 +152,18 @@ export default function Restricted() {
       <ConfirmDialog
         isOpen={isExitDialogOpen}
         onClose={() => setIsExitDialogOpen(false)}
-        onConfirm={exitRestrictedMode}
+        onConfirm={handleExitConfirm}
         title="Exit Minimalist Mode?"
         description="This will allow access to all apps."
+      />
+      
+      <PasswordDialog
+        isOpen={isPasswordDialogOpen}
+        onClose={() => setIsPasswordDialogOpen(false)}
+        onConfirm={handlePasswordSubmit}
+        title="Enter Password"
+        description="Please enter your password to exit minimalist mode."
+        error={passwordError}
       />
     </div>
   );
