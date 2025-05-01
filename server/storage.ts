@@ -1,4 +1,6 @@
 import { apps, type App, type InsertApp, settings, type Settings, type InsertSettings } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -15,66 +17,86 @@ export interface IStorage {
   initializeDefaultData(): Promise<void>;
 }
 
-// In-memory storage implementation
-export class MemStorage implements IStorage {
-  private apps: Map<number, App>;
-  private settings: Settings;
-  
-  constructor() {
-    this.apps = new Map();
-    this.settings = { id: 1, restrictedMode: false };
-    
-    // Initialize with default data
-    this.initializeDefaultData();
-  }
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
   
   async getApps(): Promise<App[]> {
-    return Array.from(this.apps.values());
+    return await db.select().from(apps);
   }
   
   async getSelectedApps(): Promise<App[]> {
-    return Array.from(this.apps.values()).filter(app => app.selected);
+    return await db.select().from(apps).where(eq(apps.selected, true));
   }
   
   async updateAppSelection(id: number, selected: boolean): Promise<App> {
-    const app = this.apps.get(id);
-    if (!app) {
+    const [updatedApp] = await db
+      .update(apps)
+      .set({ selected })
+      .where(eq(apps.id, id))
+      .returning();
+      
+    if (!updatedApp) {
       throw new Error(`App with id ${id} not found`);
     }
     
-    const updatedApp = { ...app, selected };
-    this.apps.set(id, updatedApp);
     return updatedApp;
   }
   
   async getSettings(): Promise<Settings> {
-    return this.settings;
+    const allSettings = await db.select().from(settings);
+    if (allSettings.length === 0) {
+      // Create default settings if none exist
+      const [newSettings] = await db
+        .insert(settings)
+        .values({ restrictedMode: false })
+        .returning();
+      return newSettings;
+    }
+    return allSettings[0];
   }
   
   async updateSettings(settingsData: Partial<InsertSettings>): Promise<Settings> {
-    this.settings = { ...this.settings, ...settingsData };
-    return this.settings;
+    const currentSettings = await this.getSettings();
+    
+    const [updatedSettings] = await db
+      .update(settings)
+      .set(settingsData)
+      .where(eq(settings.id, currentSettings.id))
+      .returning();
+      
+    return updatedSettings;
   }
   
   async initializeDefaultData(): Promise<void> {
-    // Add default apps
-    const defaultApps: App[] = [
-      { id: 1, name: 'Phone', icon: 'phone', color: 'green', description: 'Make calls', selected: true },
-      { id: 2, name: 'Contacts', icon: 'users', color: 'blue', description: 'View your contacts', selected: true },
-      { id: 3, name: 'WhatsApp', icon: 'message-circle', color: 'green', description: 'Send messages', selected: true },
-      { id: 4, name: 'PhonePe', icon: 'credit-card', color: 'blue', description: 'UPI payments', selected: false },
-      { id: 5, name: 'Clock', icon: 'clock', color: 'orange', description: 'Time and alarms', selected: false },
-      { id: 6, name: 'Camera', icon: 'camera', color: 'purple', description: 'Take photos', selected: false },
-      { id: 7, name: 'Gallery', icon: 'image', color: 'pink', description: 'View your photos', selected: false },
-      { id: 8, name: 'Calendar', icon: 'calendar', color: 'blue', description: 'Manage your schedule', selected: false },
-      { id: 9, name: 'Notes', icon: 'file-text', color: 'yellow', description: 'Take notes', selected: false }
-    ];
+    // Check if any apps exist
+    const existingApps = await db.select().from(apps);
     
-    defaultApps.forEach(app => {
-      this.apps.set(app.id, app);
-    });
+    if (existingApps.length === 0) {
+      // Add default apps if none exist
+      const defaultApps = [
+        { name: 'Phone', icon: 'phone', color: 'green', description: 'Make calls', selected: true },
+        { name: 'Contacts', icon: 'users', color: 'blue', description: 'View your contacts', selected: true },
+        { name: 'WhatsApp', icon: 'message-circle', color: 'green', description: 'Send messages', selected: true },
+        { name: 'PhonePe', icon: 'credit-card', color: 'blue', description: 'UPI payments', selected: false },
+        { name: 'Clock', icon: 'clock', color: 'orange', description: 'Time and alarms', selected: false },
+        { name: 'Camera', icon: 'camera', color: 'purple', description: 'Take photos', selected: false },
+        { name: 'Gallery', icon: 'image', color: 'pink', description: 'View your photos', selected: false },
+        { name: 'Calendar', icon: 'calendar', color: 'blue', description: 'Manage your schedule', selected: false },
+        { name: 'Notes', icon: 'file-text', color: 'yellow', description: 'Take notes', selected: false }
+      ];
+      
+      await db.insert(apps).values(defaultApps);
+    }
+    
+    // Check if settings exist
+    const existingSettings = await db.select().from(settings);
+    
+    if (existingSettings.length === 0) {
+      // Add default settings if none exist
+      await db.insert(settings).values({ restrictedMode: false });
+    }
   }
 }
 
 // Export storage instance
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
