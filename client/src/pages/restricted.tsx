@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { 
   Phone, Users, MessageCircle, Clock, Camera, Image, 
-  Calendar, FileText, Smartphone, X 
+  Calendar, FileText, Smartphone, X, CreditCard
 } from "lucide-react";
 
 export default function Restricted() {
@@ -54,6 +54,7 @@ export default function Restricted() {
       case 'image': return <Image className="h-6 w-6" />;
       case 'calendar': return <Calendar className="h-6 w-6" />;
       case 'file-text': return <FileText className="h-6 w-6" />;
+      case 'credit-card': return <CreditCard className="h-6 w-6" />;
       default: return <Smartphone className="h-6 w-6" />;
     }
   };

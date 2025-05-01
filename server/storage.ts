@@ -62,11 +62,12 @@ export class MemStorage implements IStorage {
       { id: 1, name: 'Phone', icon: 'phone', color: 'green', description: 'Make calls', selected: true },
       { id: 2, name: 'Contacts', icon: 'users', color: 'blue', description: 'View your contacts', selected: true },
       { id: 3, name: 'WhatsApp', icon: 'message-circle', color: 'green', description: 'Send messages', selected: true },
-      { id: 4, name: 'Clock', icon: 'clock', color: 'orange', description: 'Time and alarms', selected: false },
-      { id: 5, name: 'Camera', icon: 'camera', color: 'purple', description: 'Take photos', selected: false },
-      { id: 6, name: 'Gallery', icon: 'image', color: 'pink', description: 'View your photos', selected: false },
-      { id: 7, name: 'Calendar', icon: 'calendar', color: 'blue', description: 'Manage your schedule', selected: false },
-      { id: 8, name: 'Notes', icon: 'file-text', color: 'yellow', description: 'Take notes', selected: false }
+      { id: 4, name: 'PhonePe', icon: 'credit-card', color: 'blue', description: 'UPI payments', selected: false },
+      { id: 5, name: 'Clock', icon: 'clock', color: 'orange', description: 'Time and alarms', selected: false },
+      { id: 6, name: 'Camera', icon: 'camera', color: 'purple', description: 'Take photos', selected: false },
+      { id: 7, name: 'Gallery', icon: 'image', color: 'pink', description: 'View your photos', selected: false },
+      { id: 8, name: 'Calendar', icon: 'calendar', color: 'blue', description: 'Manage your schedule', selected: false },
+      { id: 9, name: 'Notes', icon: 'file-text', color: 'yellow', description: 'Take notes', selected: false }
     ];
     
     defaultApps.forEach(app => {

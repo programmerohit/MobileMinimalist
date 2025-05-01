@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { 
   Phone, Users, MessageCircle, Clock, Camera, Image, 
-  Calendar, FileText, Smartphone
+  Calendar, FileText, Smartphone, CreditCard
 } from "lucide-react";
 
 interface AppCardProps {
@@ -24,8 +24,10 @@ export function AppCard({ app }: AppCardProps) {
     }
   });
   
-  const handleCheckboxChange = (checked: boolean) => {
-    updateAppMutation.mutate({ id: app.id, selected: checked });
+  const handleCheckboxChange = (checked: boolean | "indeterminate") => {
+    if (checked === true || checked === false) {
+      updateAppMutation.mutate({ id: app.id, selected: checked });
+    }
   };
   
   const getIcon = () => {
@@ -38,6 +40,7 @@ export function AppCard({ app }: AppCardProps) {
       case 'image': return <Image className="h-5 w-5" />;
       case 'calendar': return <Calendar className="h-5 w-5" />;
       case 'file-text': return <FileText className="h-5 w-5" />;
+      case 'credit-card': return <CreditCard className="h-5 w-5" />;
       default: return <Smartphone className="h-5 w-5" />;
     }
   };
@@ -69,7 +72,7 @@ export function AppCard({ app }: AppCardProps) {
       </div>
       <Checkbox 
         id={`app-checkbox-${app.id}`}
-        checked={app.selected}
+        checked={app.selected || false}
         onCheckedChange={handleCheckboxChange}
         disabled={updateAppMutation.isPending}
       />
